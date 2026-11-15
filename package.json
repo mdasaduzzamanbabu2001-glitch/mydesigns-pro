@@ -1,0 +1,55 @@
+{
+  "name": "mydesigns-pro",
+  "productName": "MyDesigns Pro Tool",
+  "version": "1.0.0",
+  "description": "MyDesigns Pro Tool — Standalone POD Suite",
+  "author": "Md Asaduzzaman Babu",
+  "updateNotes": "✨ Instant Online Auto-Update, Lightweight Build & Secure Google Login Shield added!",
+  "updateRepoUrl": "https://raw.githubusercontent.com/mdasaduzzamanbabu2001-glitch/mydesigns-pro/main",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "prebuild": "node -e \"const fs=require('fs'),cp=require('child_process');fs.writeFileSync('_ico.js',`const {app,nativeImage}=require('electron'),fs=require('fs');const src=nativeImage.createFromPath('icon.png'),sizes=[256,48,32,16],imgs=sizes.map(function(s){const b=src.resize({width:s,height:s}).toBitmap(),x=Buffer.alloc(s*s*4),a=Buffer.alloc(Math.ceil(s/32)*4*s),h=Buffer.alloc(40);for(const y of Array(s).keys()){b.copy(x,y*s*4,(s-1-y)*s*4,(s-y)*s*4)}h.writeUInt32LE(40,0);h.writeInt32LE(s,4);h.writeInt32LE(s*2,8);h.writeUInt16LE(1,12);h.writeUInt16LE(32,14);h.writeUInt32LE(x.length+a.length,20);return{s:s,d:Buffer.concat([h,x,a])}});const dir=Buffer.alloc(6+imgs.length*16);dir.writeUInt16LE(1,2);dir.writeUInt16LE(imgs.length,4);let off=dir.length;imgs.forEach(function(m,i){const p=6+i*16;dir[p]=m.s===256?0:m.s;dir[p+1]=m.s===256?0:m.s;dir.writeUInt16LE(1,p+4);dir.writeUInt16LE(32,p+6);dir.writeUInt32LE(m.d.length,p+8);dir.writeUInt32LE(off,p+12);off+=m.d.length});fs.writeFileSync('icon.ico',Buffer.concat([dir].concat(imgs.map(function(m){return m.d}))));app.exit(0);`);cp.execFileSync(require('electron'),['_ico.js']);fs.unlinkSync('_ico.js');\"",
+    "build": "electron-builder --win nsis"
+  },
+  "build": {
+    "appId": "com.mydesigns.pro",
+    "productName": "MyDesigns Pro Tool",
+    "asar": false,
+    "compression": "maximum",
+    "electronLanguages": [
+      "en-US"
+    ],
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer.js",
+      "index.html",
+      "icon.png",
+      "icon.ico",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "icon.ico"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "deleteAppDataOnUninstall": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
+  },
+  "devDependencies": {
+    "electron": "^30.0.0",
+    "electron-builder": "^26.18.0"
+  }
+}
