@@ -19,7 +19,7 @@ contextBridge.exposeInMainWorld('api', {
         ipcRenderer.on('status-update', (_event, message) => callback(message));
     },
 
-    // 🚀 Live Online Auto-Update Bridges
+    // Live Online Auto-Update Bridges
     checkForUpdate: (isManual = false) => ipcRenderer.send('check-for-update', isManual),
     startLiveUpdate: () => ipcRenderer.send('start-live-update'),
     onAppVersion: (callback) => {
