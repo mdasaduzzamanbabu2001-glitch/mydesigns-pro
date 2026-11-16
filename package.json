@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "description": "MyDesigns Pro Tool — Standalone POD Suite",
   "author": "Md Asaduzzaman Babu",
-  "updateNotes": "✨ Instant Online Auto-Update, Lightweight Build & Secure Google Login Shield added!",
+  "updateNotes": "Instant Online Auto-Update, Lightweight Build & Secure Google Login Shield added.",
   "updateRepoUrl": "https://raw.githubusercontent.com/mdasaduzzamanbabu2001-glitch/mydesigns-pro/main",
   "main": "main.js",
   "scripts": {
