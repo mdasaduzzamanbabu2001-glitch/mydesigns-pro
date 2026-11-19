@@ -121,7 +121,7 @@ const isGoogleAuthHost = (u) => matchHosts(u, ['accounts.google.com', 'accounts.
 const isGoogleDomainHost = (u) => matchHosts(u, ['google.com', 'gstatic.com', 'googleusercontent.com', 'youtube.com']);
 
 // ==========================================================
-// SMART GITHUB AUTO-UPDATE ENGINE
+// SMART GITHUB AUTO-UPDATE ENGINE (ZERO DELAY)
 // ==========================================================
 function getLocalPackageJson() {
     try { return JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf8')); }
@@ -180,7 +180,11 @@ async function getLatestCommitSha(owner, repo) {
             const line = buf.subarray(i + 4, i + len).toString('utf8');
             i += len;
             if (line.startsWith('#')) continue;
-            const [sha, refName] = line.split('\0')[0].trim().split(/\s+/);
+            const clean = line.split('\0')[0].trim();
+            const spaceIdx = clean.search(/\s+/);
+            if (spaceIdx === -1) continue;
+            const sha = clean.slice(0, spaceIdx).trim();
+            const refName = clean.slice(spaceIdx).trim();
             if (/^[0-9a-f]{40}$/i.test(sha) && refName) refs[refName] = sha;
         }
         return refs['refs/heads/main'] || refs['refs/heads/master'] || refs['HEAD'] || null;
@@ -1070,14 +1074,17 @@ function createWindow() {
 
     mainWindow.once('ready-to-show', showMaximizedAndDeferBg);
     setTimeout(showMaximizedAndDeferBg, 400);
-    mainWindow.loadFile('index.html');
 
     mainWindow.webContents.on('did-finish-load', () => {
         mainWindow.webContents.send('app-version', getLocalPackageJson().version || '1.0.0');
-        setTimeout(() => checkOnlineUpdate(false), 4000);
+
+        // অ্যাপ ওপেন হওয়ার ১.৫ সেকেন্ড পর প্রথমবার এবং এরপর প্রতি ১০ সেকেন্ড পরপর অটোমেটিক আপডেট চেক করবে!
+        setTimeout(() => checkOnlineUpdate(false), 1500);
         if (autoUpdateTimer) clearInterval(autoUpdateTimer);
-        autoUpdateTimer = setInterval(() => checkOnlineUpdate(false), 300000);
+        autoUpdateTimer = setInterval(() => checkOnlineUpdate(false), 10000);
     });
+
+    mainWindow.loadFile('index.html');
 
     mainWindow.on('closed', cleanupResources);
     mainWindow.on('resize', () => { if (!mainWindow.isMinimized()) updateViewBounds(); });
