@@ -1,10 +1,10 @@
 {
   "name": "mydesigns-pro",
   "productName": "MyDesigns Pro Tool",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "MyDesigns Pro Tool — Standalone POD Suite",
   "author": "Md Asaduzzaman Babu",
-  "updateNotes": "Instant Online Auto-Update, Lightweight Build & Secure Google Login Shield added.",
+  "updateNotes": "Added Last Batch History, Completed & Incomplete Filters, and a Clear History option for better tracking and control.",
   "updateRepoUrl": "https://raw.githubusercontent.com/mdasaduzzamanbabu2001-glitch/mydesigns-pro/main",
   "main": "main.js",
   "scripts": {
