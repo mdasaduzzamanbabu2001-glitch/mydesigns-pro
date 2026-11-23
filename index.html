@@ -109,11 +109,11 @@
       background: var(--bg-card);
       border: 1px solid var(--border-card);
       border-radius: 22px;
-      padding: 28px 32px 22px 32px;
+      padding: 24px 30px 20px 30px;
       box-shadow: var(--shadow-card);
       display: flex;
       flex-direction: column;
-      gap: 20px;
+      gap: 16px;
       transition: background 0.25s ease, border-color 0.2s ease, box-shadow 0.2s ease;
     }
 
@@ -279,7 +279,7 @@
       transform: translateX(14px);
     }
 
-    /* Status / AI Title Banner (Hidden when idle) */
+    /* Status / AI Title Banner */
     #aiTitleBanner {
       display: none;
       align-items: center;
@@ -374,15 +374,110 @@
       transform: translateY(-1px);
     }
 
-    /* Queue Preview & Processing Workspace */
+    /* Queue Preview, Batch History & Processing Workspace */
     .hud-main-workspace {
       display: none;
       flex-direction: column;
-      gap: 12px;
+      gap: 10px;
     }
 
     .hud-main-workspace.active {
       display: flex;
+    }
+
+    .history-bar {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+      background: var(--preview-bg);
+      border: 1px solid var(--gallery-border);
+      border-radius: 11px;
+      padding: 8px 12px;
+    }
+
+    .history-summary {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+
+.history-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.history-summary {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.history-label {
+    display: inline-flex;
+    align-items: center;
+    line-height: 1;
+}
+
+.history-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 28px;
+    line-height: 1;
+    box-sizing: border-box;
+}
+
+
+    .history-label {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-right: 2px;
+    }
+
+    .history-empty-note {
+      font-size: 11.5px;
+      color: var(--text-muted);
+    }
+
+    .history-pill {
+      height: 26px;
+      padding: 0 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid var(--pill-border);
+      background: var(--pill-bg);
+      color: var(--text-secondary);
+      transition: all 0.15s ease;
+    }
+
+    .history-pill:hover {
+      border-color: var(--pill-hover-border);
+    }
+
+    .history-pill.active {
+      background: var(--badge-bg);
+      border-color: var(--badge-border);
+      color: var(--badge-text);
+    }
+
+    .history-pill.completed-pill.active {
+      background: rgba(16, 185, 129, 0.16);
+      border-color: #10b981;
+      color: #10b981;
+    }
+
+    .history-pill.failed-pill.active {
+      background: rgba(239, 68, 68, 0.15);
+      border-color: #ef4444;
+      color: #ef4444;
     }
 
     .file-preview-box {
@@ -444,6 +539,7 @@
       justify-content: center;
       z-index: 5;
       color: #ffffff;
+      pointer-events: none;
     }
 
     .thumb-wrapper.completed .checkmark {
@@ -452,6 +548,28 @@
     }
 
     .thumb-wrapper.completed .delete-btn {
+      display: none;
+    }
+
+    .failmark {
+      position: absolute;
+      inset: 0;
+      background: rgba(239, 68, 68, 0.45);
+      border-radius: 8px;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 5;
+      color: #ffffff;
+      pointer-events: none;
+    }
+
+    .thumb-wrapper.failed .failmark {
+      display: flex;
+      border: 1.5px solid #ef4444;
+    }
+
+    .thumb-wrapper.failed .delete-btn {
       display: none;
     }
 
@@ -549,19 +667,19 @@
       background: var(--gallery-bg);
       border: 1px solid var(--gallery-border);
       border-radius: 14px;
-      padding: 15px 18px;
+      padding: 14px 18px;
       display: flex;
       flex-direction: column;
-      min-height: 142px;
-      max-height: 196px;
+      min-height: 130px;
+      max-height: 180px;
     }
 
     .gallery-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding-bottom: 12px;
-      margin-bottom: 12px;
+      padding-bottom: 10px;
+      margin-bottom: 10px;
       border-bottom: 1px solid var(--gallery-divider);
       gap: 12px;
       flex-wrap: wrap;
@@ -614,7 +732,7 @@
       color: var(--text-secondary);
     }
 
-    .mini-btn:hover {
+    .mini-btn:hover:not(:disabled) {
       background: var(--pill-hover-bg);
       border-color: var(--pill-hover-border);
     }
@@ -629,8 +747,13 @@
       color: var(--clear-btn-text);
     }
 
-    .mini-btn.danger:hover {
+    .mini-btn.danger:hover:not(:disabled) {
       background: var(--clear-btn-hover);
+    }
+
+    .mini-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
     }
 
     .gallery-grid {
@@ -655,7 +778,7 @@
       text-align: center;
       font-size: 12px;
       color: var(--text-muted);
-      margin: 24px 0;
+      margin: 20px 0;
     }
 
     /* Footer */
@@ -693,7 +816,9 @@
     }
 
     body.view-active .gallery-container,
-    body.view-active .app-footer {
+    body.view-active .app-footer,
+    body.view-active .history-bar,
+    body.view-active .hud-main-workspace.history-only {
       display: none !important;
     }
 
@@ -977,6 +1102,24 @@
           <div class="scanner-line" id="scannerLine"></div>
         </div>
       </div>
+
+      <div class="history-bar" id="historyBar">
+        <div class="history-summary">
+          <span class="history-label">Last Batch History:</span>
+          <span class="history-empty-note" id="historyEmptyNote">No recent batch yet</span>
+          <button type="button" class="history-pill active" id="filterAllBtn" style="display: none;">All (0)</button>
+          <button type="button" class="history-pill completed-pill" id="filterCompletedBtn" style="display: none;">Completed (0)</button>
+          <button type="button" class="history-pill failed-pill" id="filterFailedBtn" style="display: none;">Incomplete (0)</button>
+        </div>
+        <button type="button" class="mini-btn danger" id="clearHistoryBtn" title="Clear checkbox history" disabled>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          </svg>
+          <span>Clear History</span>
+        </button>
+      </div>
+      
 
       <div class="file-preview-box" id="filePreviewBox"></div>
 
