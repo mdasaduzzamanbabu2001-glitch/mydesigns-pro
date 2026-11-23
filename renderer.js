@@ -45,9 +45,20 @@ const processingImage = document.getElementById('processingImage');
 const scannerLine = document.getElementById('scannerLine');
 const mainHudCard = document.getElementById('mainHudCard');
 
+const historyBar = document.getElementById('historyBar');
+const historyEmptyNote = document.getElementById('historyEmptyNote');
+const filterAllBtn = document.getElementById('filterAllBtn');
+const filterCompletedBtn = document.getElementById('filterCompletedBtn');
+const filterFailedBtn = document.getElementById('filterFailedBtn');
+const clearHistoryBtn = document.getElementById('clearHistoryBtn');
+
+const HISTORY_STORAGE_KEY = 'mydesigns_last_batch_history';
+
 let selectedFiles = [];
+let lastBatchHistory = [];
 let fileIdCounter = 0;
 let isViewVisible = false;
+let isShowingHistory = false;
 
 const ICON_CLOSE_SVG = `
   <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
@@ -59,6 +70,13 @@ const ICON_CLOSE_SVG = `
 const ICON_CHECK_SVG = `
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
     <polyline points="20 6 9 17 4 12"></polyline>
+  </svg>
+`;
+
+const ICON_FAIL_SVG = `
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="18" y1="6" x2="6" y2="18"></line>
+    <line x1="6" y1="6" x2="18" y2="18"></line>
   </svg>
 `;
 
@@ -191,6 +209,181 @@ if (saveAiSettingsBtn) {
 }
 
 // ==========================================================
+// LAST BATCH CHECKBOX HISTORY + CLEAR HISTORY BUTTON
+// ==========================================================
+function createSmallThumb(dataUrl) {
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (val) => {
+      if (!settled) {
+        settled = true;
+        resolve(val);
+      }
+    };
+    setTimeout(() => finish(dataUrl), 1500);
+
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const size = 64;
+        const c = document.createElement('canvas');
+        c.width = size;
+        c.height = size;
+        const ctx = c.getContext('2d');
+        const scale = Math.min(size / (img.width || size), size / (img.height || size));
+        const w = Math.max(1, Math.round((img.width || size) * scale));
+        const h = Math.max(1, Math.round((img.height || size) * scale));
+        ctx.clearRect(0, 0, size, size);
+        ctx.drawImage(img, Math.round((size - w) / 2), Math.round((size - h) / 2), w, h);
+        const out = c.toDataURL('image/webp', 0.7);
+        c.width = c.height = 0;
+        finish(out);
+      } catch (e) {
+        finish(dataUrl);
+      }
+    };
+    img.onerror = () => finish(dataUrl);
+    img.src = dataUrl;
+  });
+}
+
+async function buildAndSaveHistory(batchFiles) {
+  const items = [];
+  for (const f of batchFiles) {
+    const isDone = f.status === 'completed';
+    const thumb = await createSmallThumb(f.data);
+    items.push({
+      name: f.name,
+      thumb,
+      status: isDone ? 'completed' : 'failed',
+      info: f.info || (isDone ? 'Completed' : 'Incomplete / Not processed')
+    });
+  }
+  lastBatchHistory = items;
+  try {
+    localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(lastBatchHistory));
+  } catch (e) {
+    console.warn('History could not be saved to localStorage:', e);
+  }
+}
+
+function renderHistoryView(filter = 'all') {
+  isShowingHistory = true;
+  hudMainWorkspace.classList.add('active', 'history-only');
+  if (historyBar) historyBar.style.display = 'flex';
+
+  const hasItems = Array.isArray(lastBatchHistory) && lastBatchHistory.length > 0;
+
+  if (!hasItems) {
+    if (historyEmptyNote) historyEmptyNote.style.display = 'inline';
+    if (filterAllBtn) filterAllBtn.style.display = 'none';
+    if (filterCompletedBtn) filterCompletedBtn.style.display = 'none';
+    if (filterFailedBtn) filterFailedBtn.style.display = 'none';
+    if (clearHistoryBtn) clearHistoryBtn.disabled = true;
+    filePreviewBox.innerHTML = '';
+    filePreviewBox.style.display = 'none';
+    return;
+  }
+
+  const totalCount = lastBatchHistory.length;
+  const completedCount = lastBatchHistory.filter(i => i.status === 'completed').length;
+  const failedCount = totalCount - completedCount;
+
+  if (historyEmptyNote) historyEmptyNote.style.display = 'none';
+  if (clearHistoryBtn) clearHistoryBtn.disabled = false;
+
+  if (filterAllBtn) {
+    filterAllBtn.style.display = 'inline-flex';
+    filterAllBtn.textContent = `All (${totalCount})`;
+    filterAllBtn.classList.toggle('active', filter === 'all');
+  }
+  if (filterCompletedBtn) {
+    filterCompletedBtn.style.display = 'inline-flex';
+    filterCompletedBtn.textContent = `Completed (${completedCount})`;
+    filterCompletedBtn.classList.toggle('active', filter === 'completed');
+  }
+  if (filterFailedBtn) {
+    filterFailedBtn.style.display = 'inline-flex';
+    filterFailedBtn.textContent = `Incomplete (${failedCount})`;
+    filterFailedBtn.classList.toggle('active', filter === 'failed');
+  }
+
+  filePreviewBox.style.display = 'flex';
+  filePreviewBox.innerHTML = '';
+
+  const filtered = lastBatchHistory.filter(item => {
+    if (filter === 'completed') return item.status === 'completed';
+    if (filter === 'failed') return item.status !== 'completed';
+    return true;
+  });
+
+  if (filtered.length === 0) {
+    const msg = document.createElement('span');
+    msg.style.color = 'var(--text-muted)';
+    msg.style.fontSize = '12px';
+    msg.style.padding = '8px 0';
+    msg.textContent = filter === 'failed'
+      ? 'All images in the last batch completed successfully.'
+      : 'No images in this category.';
+    filePreviewBox.appendChild(msg);
+    return;
+  }
+
+  filtered.forEach(item => {
+    const isDone = item.status === 'completed';
+    const wrapper = document.createElement('div');
+    wrapper.className = `thumb-wrapper ${isDone ? 'completed' : 'failed'}`;
+    wrapper.title = `${item.name} — ${isDone ? 'Completed' : 'Incomplete'}${item.info ? ` (${item.info})` : ''}`;
+
+    const img = document.createElement('img');
+    img.src = item.thumb;
+    img.alt = item.name;
+
+    const checkmark = document.createElement('div');
+    checkmark.className = 'checkmark';
+    checkmark.innerHTML = ICON_CHECK_SVG;
+
+    const failmark = document.createElement('div');
+    failmark.className = 'failmark';
+    failmark.innerHTML = ICON_FAIL_SVG;
+
+    wrapper.appendChild(img);
+    wrapper.appendChild(checkmark);
+    wrapper.appendChild(failmark);
+    filePreviewBox.appendChild(wrapper);
+  });
+}
+
+function clearBatchHistory() {
+  lastBatchHistory = [];
+  try {
+    localStorage.removeItem(HISTORY_STORAGE_KEY);
+  } catch (e) {}
+  renderHistoryView('all');
+  showToast('Batch checkbox history cleared.');
+}
+
+function loadSavedHistory() {
+  try {
+    const raw = localStorage.getItem(HISTORY_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        lastBatchHistory = parsed;
+      }
+    }
+  } catch (e) {
+    localStorage.removeItem(HISTORY_STORAGE_KEY);
+  }
+  renderHistoryView('all');
+}
+
+if (filterAllBtn) filterAllBtn.addEventListener('click', () => renderHistoryView('all'));
+if (filterCompletedBtn) filterCompletedBtn.addEventListener('click', () => renderHistoryView('completed'));
+if (filterFailedBtn) filterFailedBtn.addEventListener('click', () => renderHistoryView('failed'));
+if (clearHistoryBtn) clearHistoryBtn.addEventListener('click', clearBatchHistory);
+
+// ==========================================================
 // WEBSITE VIEW TOGGLE & QUEUE LOGIC
 // ==========================================================
 function setWebsiteViewMode(visible) {
@@ -215,6 +408,21 @@ clearAllBtn.addEventListener('click', () => {
 });
 
 function updateQueueText() {
+  if (selectedFiles.length === 0) {
+    startBtn.disabled = true;
+    clearAllBtn.style.display = 'none';
+    renderHistoryView('all');
+    return;
+  }
+
+  isShowingHistory = false;
+  hudMainWorkspace.classList.add('active');
+  hudMainWorkspace.classList.remove('history-only');
+  if (historyBar) historyBar.style.display = 'none';
+  filePreviewBox.style.display = 'flex';
+  startBtn.disabled = false;
+  clearAllBtn.style.display = 'inline-flex';
+
   let textEl = document.getElementById('previewCountText');
   if (!textEl) {
     textEl = document.createElement('span');
@@ -227,28 +435,22 @@ function updateQueueText() {
     textEl.style.marginTop = '2px';
     filePreviewBox.appendChild(textEl);
   }
-
   textEl.textContent = `${selectedFiles.length} image(s) queued for processing`;
-
-  if (selectedFiles.length === 0) {
-    filePreviewBox.style.display = 'none';
-    hudMainWorkspace.classList.remove('active');
-    startBtn.disabled = true;
-    clearAllBtn.style.display = 'none';
-  } else {
-    hudMainWorkspace.classList.add('active');
-    filePreviewBox.style.display = 'flex';
-    startBtn.disabled = false;
-    clearAllBtn.style.display = 'inline-flex';
-  }
 }
 
 async function processSelectedFiles(filesArray) {
   if (filesArray.length > 0) {
+    const imageFiles = filesArray.filter(file => file.type.startsWith('image/'));
+    if (imageFiles.length === 0) return;
+
+    if (isShowingHistory) {
+      isShowingHistory = false;
+      if (historyBar) historyBar.style.display = 'none';
+      filePreviewBox.innerHTML = '';
+    }
+
     const existingText = document.getElementById('previewCountText');
     if (existingText) existingText.remove();
-
-    const imageFiles = filesArray.filter(file => file.type.startsWith('image/'));
 
     for (const file of imageFiles) {
       const base64 = await new Promise((resolve) => {
@@ -258,11 +460,19 @@ async function processSelectedFiles(filesArray) {
       });
 
       const currentId = 'thumb-' + fileIdCounter++;
-      selectedFiles.push({ id: currentId, name: file.name, type: file.type, data: base64 });
+      selectedFiles.push({
+        id: currentId,
+        name: file.name,
+        type: file.type,
+        data: base64,
+        status: 'pending',
+        info: ''
+      });
 
       const wrapper = document.createElement('div');
       wrapper.className = 'thumb-wrapper';
       wrapper.id = 'wrapper-' + currentId;
+      wrapper.title = file.name;
 
       const img = document.createElement('img');
       img.src = base64;
@@ -277,6 +487,10 @@ async function processSelectedFiles(filesArray) {
       checkmark.className = 'checkmark';
       checkmark.innerHTML = ICON_CHECK_SVG;
 
+      const failmark = document.createElement('div');
+      failmark.className = 'failmark';
+      failmark.innerHTML = ICON_FAIL_SVG;
+
       delBtn.onclick = () => {
         selectedFiles = selectedFiles.filter(f => f.id !== currentId);
         wrapper.remove();
@@ -285,6 +499,7 @@ async function processSelectedFiles(filesArray) {
 
       wrapper.appendChild(img);
       wrapper.appendChild(checkmark);
+      wrapper.appendChild(failmark);
       wrapper.appendChild(delBtn);
       filePreviewBox.appendChild(wrapper);
     }
@@ -350,6 +565,8 @@ window.api.onGalleryData((images) => {
 });
 
 function startProcessMode(title, isVectorize) {
+  isShowingHistory = false;
+  if (historyBar) historyBar.style.display = 'none';
   controls.style.display = 'none';
   galleryContainer.style.display = 'none';
   if (aiTitleBanner) aiTitleBanner.classList.add('visible');
@@ -359,6 +576,7 @@ function startProcessMode(title, isVectorize) {
   });
 
   hudMainWorkspace.classList.add('active');
+  hudMainWorkspace.classList.remove('history-only');
   progressWrapper.style.display = 'block';
   progressBar.style.width = '0%';
   percentText.textContent = '0%';
@@ -405,19 +623,36 @@ window.api.onProgressUpdate((data) => {
     const activeFile = selectedFiles[data.activeIndex];
     if (activeFile) {
       processingImage.src = activeFile.data;
+      const thumbWrapper = document.getElementById('wrapper-' + activeFile.id);
+      const isItemFailed = Boolean(data.isFailed) || (!data.isCompleted && typeof data.text === 'string' && /error:/i.test(data.text));
 
       if (data.isCompleted) {
-        const thumbWrapper = document.getElementById('wrapper-' + activeFile.id);
+        activeFile.status = 'completed';
+        activeFile.info = data.aiTitle || 'Completed';
         if (thumbWrapper) {
+          thumbWrapper.classList.remove('failed');
           thumbWrapper.classList.add('completed');
+          thumbWrapper.title = `${activeFile.name} — Completed (${activeFile.info})`;
         }
+      } else if (isItemFailed) {
+        activeFile.status = 'failed';
+        activeFile.info = data.text || 'Incomplete';
+        if (thumbWrapper) {
+          thumbWrapper.classList.remove('completed');
+          thumbWrapper.classList.add('failed');
+          thumbWrapper.title = `${activeFile.name} — Incomplete (${activeFile.info})`;
+        }
+      }
 
+      if (data.isCompleted || isItemFailed) {
         const countText = document.getElementById('previewCountText');
         if (countText) {
-          const remaining = selectedFiles.length - (data.activeIndex + 1);
+          const doneCount = selectedFiles.filter(f => f.status === 'completed').length;
+          const failCount = selectedFiles.filter(f => f.status === 'failed').length;
+          const remaining = selectedFiles.length - (doneCount + failCount);
           countText.textContent = remaining > 0
-            ? `${remaining} image(s) remaining in queue...`
-            : 'All queued images completed and saved.';
+            ? `${remaining} remaining • ${doneCount} completed • ${failCount} incomplete`
+            : `Finished: ${doneCount} completed • ${failCount} incomplete`;
         }
       }
     }
@@ -432,11 +667,15 @@ window.api.onStatusUpdate((message) => {
     progressText.textContent = message;
     progressText.style.color = isError ? '#ef4444' : 'var(--brand-blue)';
 
-    setTimeout(() => {
+    const finishedBatch = [...selectedFiles];
+    const historyPrepPromise = finishedBatch.length > 0
+      ? buildAndSaveHistory(finishedBatch)
+      : Promise.resolve();
+
+    setTimeout(async () => {
+      await historyPrepPromise;
+
       selectedFiles = [];
-      filePreviewBox.innerHTML = '';
-      filePreviewBox.style.display = 'none';
-      hudMainWorkspace.classList.remove('active');
       if (aiTitleBanner) aiTitleBanner.classList.remove('visible');
       startBtn.disabled = true;
       clearAllBtn.style.display = 'none';
@@ -447,7 +686,12 @@ window.api.onStatusUpdate((message) => {
       processingPreviewContainer.style.display = 'none';
       galleryContainer.style.display = 'flex';
       setWebsiteViewMode(false);
+
+      renderHistoryView('all');
       window.api.refreshGallery();
     }, 3500);
   }
 });
+
+// App open holei last batch history bar & saved checkbox gulo show korbe
+loadSavedHistory();
