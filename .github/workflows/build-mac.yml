@@ -7,7 +7,8 @@ on:
 
 jobs:
   build_mac:
-    runs-on: macos-15
+    runs-on: macos-15-intel
+    timeout-minutes: 30
 
     steps:
       - name: Checkout Code
@@ -31,11 +32,15 @@ jobs:
           rm -f package-lock.json
           node -e '
             const fs = require("fs");
+            let old = {};
+            try { old = JSON.parse(fs.readFileSync("package.json", "utf8")); } catch (e) {}
             const pkg = {
-              name: "mydesigns-pro",
-              version: "1.0.0",
-              description: "MyDesigns Pro Tool",
-              author: "Md Asaduzzaman Babu",
+              name: old.name || "mydesigns-pro",
+              version: old.version || "1.0.0",
+              description: old.description || "MyDesigns Pro Tool",
+              author: old.author || "Md Asaduzzaman Babu",
+              updateNotes: old.updateNotes,
+              updateRepoUrl: old.updateRepoUrl,
               main: "main.js",
               devDependencies: {
                 "electron": "30.5.1",
