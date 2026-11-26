@@ -1,10 +1,10 @@
 {
   "name": "mydesigns-pro",
   "productName": "MyDesigns Pro Tool",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "MyDesigns Pro Tool — Standalone POD Suite",
   "author": "Md Asaduzzaman Babu",
-  "updateNotes": "Instant Online Auto-Update, Lightweight Build & Secure Google Login Shield added.",
+  "updateNotes": "This update means The app is being built for mac successfully ✅✅",
   "updateRepoUrl": "https://raw.githubusercontent.com/mdasaduzzamanbabu2001-glitch/mydesigns-pro/main",
   "main": "main.js",
   "scripts": {
